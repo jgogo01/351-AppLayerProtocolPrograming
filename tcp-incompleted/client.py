@@ -1,13 +1,12 @@
 from socket import *
-from datetime import datetime
-import socket as socketClient
 import json
 from utils import Roles as RolesModule
 
 # Set up the socket
 serverName = 'localhost'
 serverPort = 4000
-clientSocket = socket(AF_INET, SOCK_DGRAM)
+clientSocket = socket(AF_INET, SOCK_STREAM)
+clientSocket.connect((serverName, serverPort))
 
 # Print the welcome message
 print('Welcome to Broadcast Client')
@@ -17,11 +16,11 @@ if RolesModule.Roles.LISTENER.value == role:
     print('You are a listener, please wait for the speaker')
     message = {
         "Header": {
-            "From": socketClient.gethostbyname(socketClient.gethostname()),
+            "From": gethostbyname(gethostname()),
             "Role": RolesModule.Roles.LISTENER.value
         },
         "Body": {
-            "Message": None
+            "Message": "Connection Request"
         }
     }
     
@@ -29,8 +28,8 @@ if RolesModule.Roles.LISTENER.value == role:
     message = json.dumps(message)
     
     # Send to the server
-    clientSocket.sendto(message.encode(), (serverName, serverPort))
-    serverResponse, serverAddress = clientSocket.recvfrom(2048)
+    clientSocket.send(message.encode())
+    serverResponse = clientSocket.recv(2048)
     
     # Decode the server response
     serverResponse = json.loads(serverResponse.decode())
@@ -40,15 +39,12 @@ if RolesModule.Roles.LISTENER.value == role:
     print('Message: ', serverResponse["Body"]["Message"])
     
     # Receive the server response
-    if(serverResponse["Header"]["Status"] == 200):
-        # When Connected
+    if serverResponse["Header"]["Status"] == 200:
         while True:
-            serverResponse, serverAddress = clientSocket.recvfrom(2048)
-            
-            # Decode the server response
-            serverResponse = json.loads(serverResponse.decode())
-            if(serverResponse["Header"]["Status"] == 200):
-                print('From: ', serverResponse["Header"]["From"])
+            serverResponse = clientSocket.recv(2048).decode()
+            if serverResponse != "":
+                serverResponse = json.loads(serverResponse)
+                print('From: ', serverResponse["Header"]["From"][0])
                 print('Message: ', serverResponse["Body"]["Message"])
     else:
         exit()
@@ -65,7 +61,7 @@ elif RolesModule.Roles.SPEAKER.value == role:
         # Change the message to the protocol format
         message = {
             "Header": {
-                "From": socketClient.gethostbyname(socketClient.gethostname()),
+                "From": gethostbyname(gethostname()),
                 "Role": RolesModule.Roles.SPEAKER.value
             },
             "Body": {
@@ -75,19 +71,20 @@ elif RolesModule.Roles.SPEAKER.value == role:
         
         # Convert the message to JSON string
         message = json.dumps(message)
+        
+        print('Broadcasting message...')
 
         # Send to the server
-        clientSocket.sendto(message.encode(), (serverName, serverPort))
-        serverResponse, serverAddress = clientSocket.recvfrom(2048)
+        clientSocket.send(message.encode())
+        serverResponse = clientSocket.recv(2048)
         
         # Decode the server response
         serverResponse = json.loads(serverResponse.decode())
-        print('From: ', serverResponse["Header"]["From"])
+        print('From: ', serverResponse["Header"]["From"][0])
         print('Message: ', serverResponse["Body"]["Message"])
-        
+      
+    # Close the socket
+    clientSocket.close()  
 else:
     print('Invalid role. Please try again')
     exit()
-
-# Close the socket
-clientSocket.close()
