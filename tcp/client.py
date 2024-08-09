@@ -2,13 +2,11 @@ from socket import *
 import json
 from utils import Roles as RolesModule
 
-# Set up the socket
 serverName = 'localhost'
 serverPort = 4000
 clientSocket = socket(AF_INET, SOCK_STREAM)
 clientSocket.connect((serverName, serverPort))
 
-# Print the welcome message
 print('Welcome to Broadcast Client')
 role = int(input('Enter your role (1 = Listener, 2 = Speaker): '))
 
@@ -35,6 +33,8 @@ if RolesModule.Roles.LISTENER.value == role:
     serverResponse = json.loads(serverResponse.decode())
     
     # Print the server response
+    print('Status: ', serverResponse["Header"]["Status"])
+    print('Phrase: ', serverResponse["Header"]["Phrase"])
     print('From: ', serverResponse["Header"]["From"])
     print('Message: ', serverResponse["Body"]["Message"])
     
@@ -44,6 +44,8 @@ if RolesModule.Roles.LISTENER.value == role:
             serverResponse = clientSocket.recv(2048).decode()
             if serverResponse != "":
                 serverResponse = json.loads(serverResponse)
+                print('Status: ', serverResponse["Header"]["Status"])
+                print('Phrase: ', serverResponse["Header"]["Phrase"])
                 print('From: ', serverResponse["Header"]["From"][0])
                 print('Message: ', serverResponse["Body"]["Message"])
     else:
@@ -54,11 +56,10 @@ elif RolesModule.Roles.SPEAKER.value == role:
     while True:
         messageBroadcast = input('Enter your message: ')
         
-        # Break the loop if the message is empty
         if messageBroadcast == "":
+            print('No message entered, exiting...')
             break
         
-        # Change the message to the protocol format
         message = {
             "Header": {
                 "From": gethostbyname(gethostname()),
@@ -69,22 +70,16 @@ elif RolesModule.Roles.SPEAKER.value == role:
             }
         }
         
-        # Convert the message to JSON string
         message = json.dumps(message)
         
-        print('Broadcasting message...')
-
-        # Send to the server
-        clientSocket.send(message.encode())
+        clientSocket.sendall(message.encode())
         serverResponse = clientSocket.recv(2048)
         
-        # Decode the server response
         serverResponse = json.loads(serverResponse.decode())
+        print('Status: ', serverResponse["Header"]["Status"])
+        print('Phrase: ', serverResponse["Header"]["Phrase"])
         print('From: ', serverResponse["Header"]["From"][0])
         print('Message: ', serverResponse["Body"]["Message"])
-      
-    # Close the socket
-    clientSocket.close()  
 else:
     print('Invalid role. Please try again')
     exit()
